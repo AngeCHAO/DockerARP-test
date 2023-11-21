@@ -1,9 +1,15 @@
 FROM alpine:latest
 
 RUN apk --update add bash \
-    python3
+    iproute2 \
+    less \
+    vim \
+    iputils \
+    tcpdump \
+    curl \
+    py3-flask
 
-WORKDIR /server
-COPY ./server.py /server/server.py
+WORKDIR /app
+COPY ./app.py /app/app.py
 ENTRYPOINT ["python3"]
-CMD ["server.py"]
+CMD ["app.py"]
