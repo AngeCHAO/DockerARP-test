@@ -1,14 +1,9 @@
 FROM alpine:latest
 
 RUN apk --update add bash \
-    iproute2 \
-    less \
-    vim \
-    iputils \
-    tcpdump \
-    curl \
-    scapy \
-    ipython \
-    tmux
+    python3
 
-COPY ./spoofing.py /spoofing.py
+WORKDIR /server
+COPY ./server.py /server/server.py
+ENTRYPOINT ["python3"]
+CMD ["server.py"]
